@@ -1,0 +1,7 @@
+laya==0.4.0
+faster-whisper==1.2.1
+# faster-whisper 1.2.1 falhou com PyAV 19.0.1 (erro em metadata_errors); funcionou com 15.1.0
+av<16
+yt-dlp
+pandas
+openpyxl

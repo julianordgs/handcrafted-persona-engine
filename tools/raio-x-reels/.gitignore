@@ -1,0 +1,5 @@
+saida/
+__pycache__/
+*.csv
+*.xlsx
+cookies.txt
