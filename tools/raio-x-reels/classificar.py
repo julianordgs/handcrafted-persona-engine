@@ -119,6 +119,10 @@ def main():
     campos["transcricao"] = [r["texto"] for r in regs]
     if "duracao_s" not in df:
         df["duracao_s"] = df["url"].map({r["url"]: r["duracao_audio_s"] for r in regs})
+    # Legenda e contagens exatas que o yt-dlp trouxe têm prioridade sobre a planilha (que costuma arredondar).
+    for col in ("legenda", "curtidas", "comentarios"):
+        do_post = df["url"].map({r["url"]: (r.get("meta") or {}).get(col) for r in regs})
+        df[col] = do_post.fillna(df[col]) if col in df else do_post
 
     final = df.merge(campos, on="url", how="left")
     final["formato_recorrente"] = ""

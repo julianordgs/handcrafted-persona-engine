@@ -25,7 +25,10 @@ def ler_planilha(caminho: str) -> pd.DataFrame:
     """Lê CSV/XLSX/JSON e devolve um DataFrame com as colunas canônicas que existirem."""
     p = Path(caminho)
     if p.suffix.lower() in (".xlsx", ".xls"):
-        df = pd.read_excel(p)
+        try:
+            df = pd.read_excel(p)
+        except ValueError:  # CSV salvo com extensão .xlsx
+            df = pd.read_csv(p)
     elif p.suffix.lower() == ".json":
         df = pd.json_normalize(json.loads(p.read_text(encoding="utf-8")))
     else:

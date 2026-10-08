@@ -16,9 +16,10 @@ A planilha de entrada pode ser o CSV, XLSX ou JSON exportado do Apify. As coluna
 ```bash
 .venv/bin/python transcrever.py reels.csv        # gera saida/transcricoes.jsonl (retomável)
 .venv/bin/python classificar.py reels.csv        # gera saida/planilha_final.csv
+.venv/bin/python analisar.py --meu-perfil usuario  # gera saida/numeros.md (base do Prompt 2)
 ```
 
-- `transcrever.py` baixa o áudio pelo `videoUrl` (link direto do vídeo). Sem ele, tenta o `yt-dlp` no link do post; use `--cookies cookies.txt` se o Instagram bloquear.
+- `transcrever.py` baixa o áudio pelo `videoUrl` (link direto do vídeo). Sem ele, usa o `yt-dlp` no link do post, que também traz legenda, curtidas e comentários exatos (views e duração não vêm; a duração sai do áudio). Use `--cookies cookies.txt` se o Instagram bloquear.
 - Os links `videoUrl` do Apify expiram depois de alguns dias. Exporte de novo antes de transcrever.
 - Na CPU, o modelo padrão (`large-v3-turbo`) leva cerca de 1 minuto por minuto de vídeo. Com GPU, é bem mais rápido.
 - `formato_recorrente` fica em branco: é nomeado na etapa de análise, lendo transcrições e legendas.

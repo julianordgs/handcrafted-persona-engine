@@ -9,10 +9,10 @@ Uso:
 import argparse
 import json
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
+import yt_dlp
 from faster_whisper import WhisperModel
 
 from comum import SAIDA, ler_jsonl, ler_planilha
@@ -21,8 +21,10 @@ SEGUNDOS_GANCHO = 5
 SEGUNDOS_FINAL = 8
 
 
-def baixar_audio(linha, destino: Path, cookies: str | None) -> None:
-    """Extrai áudio mono 16 kHz. Tenta o link direto do vídeo; se falhar, usa yt-dlp no link do post."""
+def baixar_audio(linha, destino: Path, cookies: str | None) -> dict:
+    """Extrai áudio mono 16 kHz. Tenta o link direto do vídeo; se falhar, usa yt-dlp no link do post.
+
+    Pelo yt-dlp, devolve também legenda, curtidas e comentários exatos do post (views não vêm)."""
     video_url = linha.get("video_url")
     if isinstance(video_url, str) and video_url.startswith("http"):
         r = subprocess.run(
@@ -30,19 +32,19 @@ def baixar_audio(linha, destino: Path, cookies: str | None) -> None:
             capture_output=True, text=True, timeout=300,
         )
         if r.returncode == 0 and destino.exists():
-            return
+            return {}
 
     bruto = destino.with_suffix(".src")
-    cmd = [sys.executable, "-m", "yt_dlp", "-q", "--no-warnings", "-f", "ba/b", "-o", str(bruto), linha["url"]]
+    opts = {"quiet": True, "no_warnings": True, "format": "ba/b", "outtmpl": str(bruto)}
     if cookies:
-        cmd[3:3] = ["--cookies", cookies]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    if r.returncode != 0:
-        raise RuntimeError(r.stderr.strip().splitlines()[-1] if r.stderr.strip() else "yt-dlp falhou")
+        opts["cookiefile"] = cookies
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(linha["url"], download=True)
     subprocess.run(
         ["ffmpeg", "-loglevel", "error", "-y", "-i", str(bruto), "-vn", "-ac", "1", "-ar", "16000", str(destino)],
         check=True, timeout=300,
     )
+    return {"legenda": info.get("description"), "curtidas": info.get("like_count"), "comentarios": info.get("comment_count")}
 
 
 def transcrever(modelo: WhisperModel, audio: Path) -> dict:
@@ -84,8 +86,8 @@ def main():
         for i, linha in enumerate(pendentes, 1):
             audio = Path(tmp) / "audio.wav"
             try:
-                baixar_audio(linha, audio, args.cookies)
-                reg = {"url": linha["url"], **transcrever(modelo, audio)}
+                meta = baixar_audio(linha, audio, args.cookies)
+                reg = {"url": linha["url"], **transcrever(modelo, audio), "meta": meta}
                 print(f"[{i}/{len(pendentes)}] ok  {linha['url']}", flush=True)
             except Exception as e:  # segue para o próximo; o erro fica registrado
                 reg = {"url": linha["url"], "erro": str(e)[:300]}
